@@ -4,11 +4,13 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "2112miami"
+
+# 🔑 ESTA É A CHAVE DA SESSÃO (NÃO É A SENHA DO DONO)
+app.secret_key = "2112miami"  # pode deixar assim ou trocar
 
 ARQUIVO_DADOS = "avaliacoes.json"
 
-# ---------- CARREGA DADOS ----------
+# --------- CARREGAR DADOS ---------
 if os.path.exists(ARQUIVO_DADOS):
     try:
         with open(ARQUIVO_DADOS, "r", encoding="utf-8") as f:
@@ -25,7 +27,7 @@ def salvar_dados():
         json.dump(reviews, f, indent=4, ensure_ascii=False)
 
 
-# ---------- PÁGINA DE AVALIAÇÃO ----------
+# --------- PÁGINA DE AVALIAÇÃO ---------
 @app.route('/', methods=['GET', 'POST'])
 def index():
     global reviews
@@ -37,8 +39,13 @@ def index():
         except ValueError:
             indicacao = 0
 
+        nome_cliente = request.form.get("nome_cliente") or ""
+        telefone_cliente = request.form.get("telefone_cliente") or ""
+
         review = {
             "data": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "nome_cliente": nome_cliente,
+            "telefone_cliente": telefone_cliente,
             "colaborador": request.form.get("colaborador"),
             "educacao": request.form.get("educacao"),
             "clareza": request.form.get("clareza"),
@@ -68,67 +75,90 @@ def index():
     )
 
 
-# ---------- DASHBOARD ----------
+# --------- DASHBOARD COM SENHA ---------
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    # Se não estiver autenticado
+    # 🔒 PRIMEIRO: VERIFICA SE ESTÁ LOGADO
     if not session.get("autenticado"):
         if request.method == "POST":
             senha = request.form.get("senha")
-            if senha == "1234":  # <-- TROQUE POR UMA SENHA SUA
+
+            # 👇 AQUI É A SENHA DO DONO
+            # Troque "2112miami" para a senha que você quiser
+            if senha == "2112miami":
                 session["autenticado"] = True
                 return redirect(url_for("dashboard"))
             else:
                 return render_template("login.html", erro="Senha incorreta")
+
+        # se for GET (primeira vez), mostra tela de login
         return render_template("login.html")
 
-    # Se estiver autenticado, mostra o dashboard normal
+    # 🔓 DAQUI PRA BAIXO É O DASHBOARD MESMO (só entra se estiver autenticado)
     total_reviews = len(reviews)
 
+    # média geral
     media_indicacao = None
     if total_reviews > 0:
         media_indicacao = sum(r.get("indicacao", 0) for r in reviews) / total_reviews
 
+    # estatísticas por colaborador
     por_colab = {}
     for r in reviews:
         nome = r.get("colaborador") or "Não informado"
+
         if nome not in por_colab:
-            por_colab[nome] = {"quantidade": 0, "soma_indicacao": 0, "qtd_indicacao": 0}
+            por_colab[nome] = {
+                "quantidade": 0,
+                "soma": 0,
+                "qtd_notas": 0
+            }
+
         por_colab[nome]["quantidade"] += 1
+
         nota = r.get("indicacao")
         if isinstance(nota, int):
-            por_colab[nome]["soma_indicacao"] += nota
-            por_colab[nome]["qtd_indicacao"] += 1
+            por_colab[nome]["soma"] += nota
+            por_colab[nome]["qtd_notas"] += 1
 
     estatisticas_colab = []
     for nome, dados in por_colab.items():
         media = None
-        if dados["qtd_indicacao"] > 0:
-            media = dados["soma_indicacao"] / dados["qtd_indicacao"]
-        estatisticas_colab.append(
-            {"nome": nome, "quantidade": dados["quantidade"], "media": media}
-        )
+        if dados["qtd_notas"] > 0:
+            media = dados["soma"] / dados["qtd_notas"]
 
-    colab_labels = [c["nome"] for c in estatisticas_colab]
-    colab_medias = [(c["media"] or 0) for c in estatisticas_colab]
+        estatisticas_colab.append({
+            "nome": nome,
+            "quantidade": dados["quantidade"],
+            "media": media
+        })
 
-    dist_labels = list(range(11))
-    dist_values = [0] * 11
-    for r in reviews:
-        nota = r.get("indicacao")
-        if isinstance(nota, int) and 0 <= nota <= 10:
-            dist_values[nota] += 1
+    # indicadores por critério
+    def contar(campo):
+        base = {"excelente": 0, "regular": 0, "ruim": 0}
+        for r in reviews:
+            valor = r.get(campo)
+            if valor in base:
+                base[valor] += 1
+        return base
+
+    indicadores = {
+        "educacao": contar("educacao"),
+        "clareza": contar("clareza"),
+        "transparencia": contar("transparencia"),
+        "organizacao": contar("organizacao"),
+        "finalizacao": contar("finalizacao"),
+    }
 
     return render_template(
         "dashboard.html",
         total_reviews=total_reviews,
         media_indicacao=media_indicacao,
         estatisticas_colab=estatisticas_colab,
-        colab_labels=colab_labels,
-        colab_medias=colab_medias,
-        dist_labels=dist_labels,
-        dist_values=dist_values,
+        indicadores=indicadores,
+        reviews=reviews,
     )
+
 
 if __name__ == "__main__":
     app.run()
