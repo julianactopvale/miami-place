@@ -5,45 +5,43 @@
     <title>Dashboard – Miami Place</title>
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
-            background-color: #eae6df;
+            background-color: #ffffff;
             color: #2c2c2c;
             font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
+        .top-header {
+            border-bottom: 1px solid #eee;
+            background-color: #ffffff;
         }
 
-        .logo-small {
-            max-width: 130px;
+        .logo {
+            max-height: 60px;
+            width: auto;
         }
 
         .card-soft {
             background-color: #ffffff;
-            border-radius: 18px;
-            box-shadow: 0 14px 30px rgba(0,0,0,0.06);
-            padding: 22px;
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+            padding: 20px;
             margin-bottom: 20px;
-            border: 1px solid rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.03);
         }
 
         .metric-title {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #9b9386;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .metric-value {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 600;
         }
 
@@ -55,8 +53,16 @@
             font-size: 0.8rem;
         }
 
-        .table-sm td, .table-sm th {
-            padding: .35rem .5rem;
+        .avaliacao-card {
+            background-color: #f8f6f3;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #e0dcd6;
+        }
+
+        .small-muted {
+            font-size: 0.85rem;
+            color: #777;
         }
 
         .btn-voltar {
@@ -73,24 +79,27 @@
 </head>
 <body>
 
-<div class="container py-4">
-
-    <div class="top-bar">
+<header class="top-header py-2">
+    <div class="container d-flex justify-content-between align-items-center">
         <div>
-            <button class="btn btn-outline-secondary btn-voltar" onclick="window.location.href='/'">
+            <button class="btn btn-outline-secondary btn-voltar"
+                    onclick="window.location.href='/'">
                 ← Formulário
             </button>
             <div class="mt-2">
                 <span class="metric-title">Dashboard de Atendimento</span>
-                <h4 class="mb-0">Miami Place – Visão Geral</h4>
+                <h4 class="mb-0">Miami Place</h4>
             </div>
         </div>
         <div>
-            <img src="{{ url_for('static', filename='logo.png') }}" class="logo-small" alt="Miami Place">
+            <img src="{{ url_for('static', filename='logo.png') }}" class="logo" alt="Miami Place">
         </div>
     </div>
+</header>
 
-    <!-- Métricas principais -->
+<div class="container py-4">
+
+    <!-- Métricas e filtro -->
     <div class="row g-3 mb-3">
         <div class="col-md-4">
             <div class="card-soft">
@@ -108,28 +117,41 @@
             </div>
         </div>
 
-        <div class="col-md-8">
+        <div class="col-md-4">
             <div class="card-soft">
-                <div class="metric-title mb-2">Média por colaborador</div>
-                <canvas id="colabChart" height="110"></canvas>
+                <div class="metric-title">Total de avaliações</div>
+                <div class="metric-value">
+                    {{ total_reviews }}
+                </div>
+                <small class="text-muted">
+                    Somando todos os colaboradores.
+                </small>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card-soft">
+                <div class="metric-title mb-1">Filtrar por colaborador</div>
+                <select id="filtroColab" class="form-select">
+                    <option value="todos">Todos</option>
+                    {% for c in estatisticas_colab %}
+                        <option value="{{ c.nome }}">{{ c.nome }}</option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">
+                    Use o filtro para ver apenas as avaliações de um atendente.
+                </small>
             </div>
         </div>
     </div>
 
-    <!-- Distribuição de notas + tabela -->
-    <div class="row g-3">
-        <div class="col-md-7">
-            <div class="card-soft">
-                <div class="metric-title mb-2">Distribuição de notas (0–10)</div>
-                <canvas id="distChart" height="140"></canvas>
-            </div>
-        </div>
-
-        <div class="col-md-5">
+    <!-- Resumo por colaborador + qualidade -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
             <div class="card-soft">
                 <div class="metric-title mb-2">Resumo por colaborador</div>
                 {% if estatisticas_colab %}
-                    <table class="table table-sm align-middle">
+                    <table class="table table-sm align-middle mb-0">
                         <thead>
                         <tr>
                             <th>Colaborador</th>
@@ -157,8 +179,10 @@
                     <p class="text-muted mb-0">Sem avaliações cadastradas ainda.</p>
                 {% endif %}
             </div>
+        </div>
 
-            <div class="card-soft mt-2">
+        <div class="col-md-6">
+            <div class="card-soft">
                 <div class="metric-title mb-2">Qualidade por critério</div>
                 <ul class="small mb-0">
                     <li>Educação: 🟢 {{ indicadores.educacao.excelente }} | 🟠 {{ indicadores.educacao.regular }} | 🔴 {{ indicadores.educacao.ruim }}</li>
@@ -170,79 +194,73 @@
             </div>
         </div>
     </div>
+
+    <!-- Lista de avaliações -->
+    <div class="card-soft">
+        <div class="metric-title mb-2">Avaliações detalhadas</div>
+
+        {% if reviews %}
+            {% for r in reviews %}
+                <div class="avaliacao-card mb-2" data-colab="{{ r.colaborador }}">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <strong>{{ r.colaborador }}</strong>
+                            {% if r.indicacao is not none %}
+                                <span class="small-muted">— ⭐ {{ r.indicacao }}/10</span>
+                            {% endif %}
+                        </div>
+                        <div class="small-muted">
+                            {{ r.data or "" }}
+                        </div>
+                    </div>
+
+                    {% if r.nome_cliente or r.telefone_cliente %}
+                        <p class="small-muted mb-1 mt-1">
+                            Cliente:
+                            {% if r.nome_cliente %}{{ r.nome_cliente }}{% endif %}
+                            {% if r.telefone_cliente %} • {{ r.telefone_cliente }}{% endif %}
+                        </p>
+                    {% endif %}
+
+                    <p class="small-muted mb-1">
+                        Educação: {{ r.educacao }} |
+                        Clareza: {{ r.clareza }} |
+                        Transparência: {{ r.transparencia }} |
+                        Organização: {{ r.organizacao }} |
+                        Finalização: {{ r.finalizacao }}
+                    </p>
+
+                    {% if r.melhoria %}
+                        <p class="mb-0"><strong>Comentário:</strong> {{ r.melhoria }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted mb-0">Ainda não há avaliações cadastradas.</p>
+        {% endif %}
+    </div>
+
 </div>
 
 <script>
-    // Arrays montados manualmente com Jinja (sem tojson)
-    const colabLabels = [
-        {% for l in colab_labels %}
-            "{{ l }}"{% if not loop.last %}, {% endif %}
-        {% endfor %}
-    ];
+    // Filtro por colaborador (front-end)
+    const selectFiltro = document.getElementById('filtroColab');
 
-    const colabMedias = [
-        {% for v in colab_medias %}
-            {{ v }}{% if not loop.last %}, {% endif %}
-        {% endfor %}
-    ];
+    if (selectFiltro) {
+        selectFiltro.addEventListener('change', function () {
+            const valor = this.value;
+            const cards = document.querySelectorAll('[data-colab]');
 
-    const distLabels = [
-        {% for l in dist_labels %}
-            {{ l }}{% if not loop.last %}, {% endif %}
-        {% endfor %}
-    ];
-
-    const distValues = [
-        {% for v in dist_values %}
-            {{ v }}{% if not loop.last %}, {% endif %}
-        {% endfor %}
-    ];
-
-    // Gráfico de média por colaborador
-    const ctxColab = document.getElementById('colabChart').getContext('2d');
-    new Chart(ctxColab, {
-        type: 'bar',
-        data: {
-            labels: colabLabels,
-            datasets: [{
-                label: 'Média de indicação',
-                data: colabMedias,
-                borderRadius: 8,
-                backgroundColor: 'rgba(191,168,143,0.85)',
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, max: 10 }
-            }
-        }
-    });
-
-    // Gráfico de distribuição de notas
-    const ctxDist = document.getElementById('distChart').getContext('2d');
-    new Chart(ctxDist, {
-        type: 'line',
-        data: {
-            labels: distLabels,
-            datasets: [{
-                label: 'Quantidade de avaliações',
-                data: distValues,
-                tension: 0.4,
-                fill: true,
-                backgroundColor: 'rgba(191,168,143,0.25)',
-                borderColor: 'rgba(191,168,143,1)',
-                pointRadius: 4,
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { title: { display: true, text: 'Nota' } },
-                y: { beginAtZero: true, title: { display: true, text: 'Quantidade' } }
-            }
-        }
-    });
+            cards.forEach(card => {
+                const colab = card.getAttribute('data-colab');
+                if (valor === 'todos' || valor === colab) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
 </script>
 
 </body>

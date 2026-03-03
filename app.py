@@ -5,8 +5,8 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# 🔑 ESTA É A CHAVE DA SESSÃO (NÃO É A SENHA DO DONO)
-app.secret_key = "2112miami"  # pode deixar assim ou trocar
+# 🔑 chave da sessão (não é a senha do dono)
+app.secret_key = "2112miami"
 
 ARQUIVO_DADOS = "avaliacoes.json"
 
@@ -27,74 +27,8 @@ def salvar_dados():
         json.dump(reviews, f, indent=4, ensure_ascii=False)
 
 
-# --------- PÁGINA DE AVALIAÇÃO ---------
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    global reviews
-
-    if request.method == 'POST':
-        indicacao_str = request.form.get('indicacao') or "0"
-        try:
-            indicacao = int(indicacao_str)
-        except ValueError:
-            indicacao = 0
-
-        nome_cliente = request.form.get("nome_cliente") or ""
-        telefone_cliente = request.form.get("telefone_cliente") or ""
-
-        review = {
-            "data": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "nome_cliente": nome_cliente,
-            "telefone_cliente": telefone_cliente,
-            "colaborador": request.form.get("colaborador"),
-            "educacao": request.form.get("educacao"),
-            "clareza": request.form.get("clareza"),
-            "transparencia": request.form.get("transparencia"),
-            "organizacao": request.form.get("organizacao"),
-            "finalizacao": request.form.get("finalizacao"),
-            "indicacao": indicacao,
-            "melhoria": request.form.get("melhoria"),
-        }
-
-        reviews.append(review)
-        salvar_dados()
-
-        return redirect(url_for("index"))
-
-    total_reviews = len(reviews)
-
-    media_indicacao = None
-    if total_reviews > 0:
-        media_indicacao = sum(r.get("indicacao", 0) for r in reviews) / total_reviews
-
-    return render_template(
-        "index.html",
-        reviews=reviews,
-        media_indicacao=media_indicacao,
-        total_reviews=total_reviews,
-    )
-
-
-# --------- DASHBOARD COM SENHA ---------
-@app.route('/dashboard', methods=['GET', 'POST'])
-def dashboard():
-    # 🔒 PRIMEIRO: VERIFICA SE ESTÁ LOGADO
-    if not session.get("autenticado"):
-        if request.method == "POST":
-            senha = request.form.get("senha")
-
-            # 👇 AQUI É A SENHA DO DONO
-            # Troque "2112miami" para a senha que você quiser
-            if senha == "2112miami":
-                session["autenticado"] = True
-                return redirect(url_for("dashboard"))
-            else:
-                return render_template("login.html", erro="Senha incorreta")
-
-        # se for GET (primeira vez), mostra tela de login
-        return render_template("login.html")
-
-    # 🔓 DAQUI PRA BAIXO É O DASHBOARD MESMO (só entra se estiver autenticado)
+def calcular_estatisticas():
+    """Calcula métricas usadas no index e no dashboard."""
     total_reviews = len(reviews)
 
     # média geral
@@ -133,7 +67,7 @@ def dashboard():
             "media": media
         })
 
-    # indicadores por critério
+    # indicadores por critério (excelente / regular / ruim)
     def contar(campo):
         base = {"excelente": 0, "regular": 0, "ruim": 0}
         for r in reviews:
@@ -150,6 +84,76 @@ def dashboard():
         "finalizacao": contar("finalizacao"),
     }
 
+    return total_reviews, media_indicacao, estatisticas_colab, indicadores
+
+
+# --------- PÁGINA DE AVALIAÇÃO (CLIENTE) ---------
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    global reviews
+
+    if request.method == 'POST':
+        indicacao_str = request.form.get('indicacao') or "0"
+        try:
+            indicacao = int(indicacao_str)
+        except ValueError:
+            indicacao = 0
+
+        nome_cliente = request.form.get("nome_cliente") or ""
+        telefone_cliente = request.form.get("telefone_cliente") or ""
+
+        review = {
+            "data": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "nome_cliente": nome_cliente,
+            "telefone_cliente": telefone_cliente,
+            "colaborador": request.form.get("colaborador"),
+            "educacao": request.form.get("educacao"),
+            "clareza": request.form.get("clareza"),
+            "transparencia": request.form.get("transparencia"),
+            "organizacao": request.form.get("organizacao"),
+            "finalizacao": request.form.get("finalizacao"),
+            "indicacao": indicacao,
+            "melhoria": request.form.get("melhoria"),
+        }
+
+        reviews.append(review)
+        salvar_dados()
+
+        return redirect(url_for("index"))
+
+    total_reviews, media_indicacao, estatisticas_colab, indicadores = calcular_estatisticas()
+
+    return render_template(
+        "index.html",
+        reviews=reviews,
+        media_indicacao=media_indicacao,
+        total_reviews=total_reviews,
+        estatisticas_colab=estatisticas_colab,
+        indicadores=indicadores,
+    )
+
+
+# --------- DASHBOARD COM SENHA ---------
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    # 🔒 LOGIN
+    if not session.get("autenticado"):
+        if request.method == "POST":
+            senha = request.form.get("senha")
+
+            # 👇 AQUI É A SENHA DO DONO
+            # (troque "2112miami" se quiser outra)
+            if senha == "2112miami":
+                session["autenticado"] = True
+                return redirect(url_for("dashboard"))
+            else:
+                return render_template("login.html", erro="Senha incorreta")
+
+        return render_template("login.html")
+
+    # 🔓 DASHBOARD (já autenticado)
+    total_reviews, media_indicacao, estatisticas_colab, indicadores = calcular_estatisticas()
+
     return render_template(
         "dashboard.html",
         total_reviews=total_reviews,
@@ -162,4 +166,3 @@ def dashboard():
 
 if __name__ == "__main__":
     app.run()
-    

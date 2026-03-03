@@ -7,62 +7,75 @@
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 
-    <style>
-body {
-    background-color: #eae6df; /* bege sofisticado */
-    color: #2c2c2c;
-    font-family: "Segoe UI", sans-serif;
-}
+   <style>
+    body {
+        background-color: #ffffff;
+        color: #2c2c2c;
+        font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
 
-.main-card {
-    background-color: #ffffff;
-    border-radius: 18px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.08);
-    padding: 50px;
-}
+    .top-header {
+        border-bottom: 1px solid #eee;
+        background-color: #ffffff;
+    }
 
-.logo {
-    max-width: 200px;
-}
+    .logo {
+        max-height: 70px;  /* deixa em formato faixa/paisagem */
+        width: auto;
+    }
 
-.section-title {
-    font-weight: 600;
-    color: #3a3a3a;
-}
+    .main-card {
+        background-color: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+        padding: 40px;
+    }
 
-.btn-miami {
-    background-color: #bfa88f; /* bege luxo */
-    border: none;
-    color: white;
-    font-weight: 600;
-    padding: 12px;
-    border-radius: 12px;
-    transition: 0.3s ease;
-}
+    .section-title {
+        font-weight: 600;
+        color: #3a3a3a;
+    }
 
-.btn-miami:hover {
-    background-color: #a8927c;
-}
+    .btn-miami {
+        background-color: #bfa88f;
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 12px;
+        border-radius: 12px;
+        transition: 0.3s ease;
+    }
 
-input, textarea {
-    border-radius: 10px !important;
-    border: 1px solid #ddd !important;
-}
+    .btn-miami:hover {
+        background-color: #a8927c;
+    }
 
-.card-avaliacao {
-    background-color: #f8f6f3;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 15px;
-    border: 1px solid #e0dcd6;
-}
+    input, textarea {
+        border-radius: 10px !important;
+        border: 1px solid #ddd !important;
+    }
 
-.subtle {
-    color: #7a7a7a;
-}
+    .card-avaliacao {
+        background-color: #f8f6f3;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border: 1px solid #e0dcd6;
+    }
+
+    .subtle {
+        color: #7a7a7a;
+        font-size: 0.9rem;
+    }
 </style>
 </head>
 <body>
+<header class="top-header text-center py-3">
+    <img src="{{ url_for('static', filename='logo.png') }}" class="logo" alt="Miami Place">
+</header>
+
+<div class="container py-5">
+    <!-- aqui continua o resto da sua página (main-card, formulário etc.) -->
 
 <div class="container py-5">
 
