@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 import json
 import os
 from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = "2112miami"
 
 ARQUIVO_DADOS = "avaliacoes.json"
 
@@ -68,25 +69,31 @@ def index():
 
 
 # ---------- DASHBOARD ----------
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
+    # Se não estiver autenticado
+    if not session.get("autenticado"):
+        if request.method == "POST":
+            senha = request.form.get("senha")
+            if senha == "1234":  # <-- TROQUE POR UMA SENHA SUA
+                session["autenticado"] = True
+                return redirect(url_for("dashboard"))
+            else:
+                return render_template("login.html", erro="Senha incorreta")
+        return render_template("login.html")
+
+    # Se estiver autenticado, mostra o dashboard normal
     total_reviews = len(reviews)
 
-    # média geral 0–10
     media_indicacao = None
     if total_reviews > 0:
         media_indicacao = sum(r.get("indicacao", 0) for r in reviews) / total_reviews
 
-    # estatísticas por colaborador
     por_colab = {}
     for r in reviews:
         nome = r.get("colaborador") or "Não informado"
         if nome not in por_colab:
-            por_colab[nome] = {
-                "quantidade": 0,
-                "soma_indicacao": 0,
-                "qtd_indicacao": 0,
-            }
+            por_colab[nome] = {"quantidade": 0, "soma_indicacao": 0, "qtd_indicacao": 0}
         por_colab[nome]["quantidade"] += 1
         nota = r.get("indicacao")
         if isinstance(nota, int):
@@ -102,34 +109,15 @@ def dashboard():
             {"nome": nome, "quantidade": dados["quantidade"], "media": media}
         )
 
-    # dados para gráfico de média por colaborador
     colab_labels = [c["nome"] for c in estatisticas_colab]
     colab_medias = [(c["media"] or 0) for c in estatisticas_colab]
 
-    # distribuição de notas 0–10
     dist_labels = list(range(11))
     dist_values = [0] * 11
     for r in reviews:
         nota = r.get("indicacao")
         if isinstance(nota, int) and 0 <= nota <= 10:
             dist_values[nota] += 1
-
-    # contagem de excelente/regular/ruim
-    def contar_niveis(campo):
-        base = {"excelente": 0, "regular": 0, "ruim": 0}
-        for r in reviews:
-            valor = r.get(campo)
-            if valor in base:
-                base[valor] += 1
-        return base
-
-    indicadores = {
-        "educacao": contar_niveis("educacao"),
-        "clareza": contar_niveis("clareza"),
-        "transparencia": contar_niveis("transparencia"),
-        "organizacao": contar_niveis("organizacao"),
-        "finalizacao": contar_niveis("finalizacao"),
-    }
 
     return render_template(
         "dashboard.html",
@@ -140,9 +128,7 @@ def dashboard():
         colab_medias=colab_medias,
         dist_labels=dist_labels,
         dist_values=dist_values,
-        indicadores=indicadores,
     )
-
 
 if __name__ == "__main__":
     app.run()
