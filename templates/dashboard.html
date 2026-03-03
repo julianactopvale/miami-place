@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard – Miami Place</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background-color: #eae6df;
+            color: #2c2c2c;
+            font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .logo-small {
+            max-width: 130px;
+        }
+
+        .card-soft {
+            background-color: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 14px 30px rgba(0,0,0,0.06);
+            padding: 22px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+
+        .metric-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9b9386;
+            margin-bottom: 6px;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .badge-colab {
+            background-color: #f4efe7;
+            color: #5c4b3a;
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 0.8rem;
+        }
+
+        .table-sm td, .table-sm th {
+            padding: .35rem .5rem;
+        }
+
+        .btn-voltar {
+            border-radius: 999px;
+            padding-inline: 18px;
+            border-color: #bfa88f;
+            color: #6a5846;
+        }
+        .btn-voltar:hover {
+            background-color: #bfa88f;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+
+    <div class="top-bar">
+        <div>
+            <button class="btn btn-outline-secondary btn-voltar" onclick="window.location.href='/'">
+                ← Formulário
+            </button>
+            <div class="mt-2">
+                <span class="metric-title">Dashboard de Atendimento</span>
+                <h4 class="mb-0">Miami Place – Visão Geral</h4>
+            </div>
+        </div>
+        <div>
+            <img src="{{ url_for('static', filename='logo.png') }}" class="logo-small" alt="Miami Place">
+        </div>
+    </div>
+
+    <!-- Métricas principais -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card-soft">
+                <div class="metric-title">Média de indicação</div>
+                <div class="metric-value">
+                    {% if media_indicacao is not none %}
+                        {{ media_indicacao|round(1) }}/10
+                    {% else %}
+                        –
+                    {% endif %}
+                </div>
+                <small class="text-muted">
+                    Baseado em {{ total_reviews }} avaliação{{ 's' if total_reviews != 1 else '' }}.
+                </small>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card-soft">
+                <div class="metric-title mb-2">Média por colaborador</div>
+                <canvas id="colabChart" height="110"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Distribuição de notas + tabela -->
+    <div class="row g-3">
+        <div class="col-md-7">
+            <div class="card-soft">
+                <div class="metric-title mb-2">Distribuição de notas (0–10)</div>
+                <canvas id="distChart" height="140"></canvas>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card-soft">
+                <div class="metric-title mb-2">Resumo por colaborador</div>
+                {% if estatisticas_colab %}
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Qtd</th>
+                            <th>Média</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for c in estatisticas_colab %}
+                            <tr>
+                                <td><span class="badge-colab">{{ c.nome }}</span></td>
+                                <td>{{ c.quantidade }}</td>
+                                <td>
+                                    {% if c.media is not none %}
+                                        {{ c.media|round(1) }}/10
+                                    {% else %}
+                                        –
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted mb-0">Sem avaliações cadastradas ainda.</p>
+                {% endif %}
+            </div>
+
+            <div class="card-soft mt-2">
+                <div class="metric-title mb-2">Qualidade por critério</div>
+                <ul class="small mb-0">
+                    <li>Educação: 🟢 {{ indicadores.educacao.excelente }} | 🟠 {{ indicadores.educacao.regular }} | 🔴 {{ indicadores.educacao.ruim }}</li>
+                    <li>Clareza: 🟢 {{ indicadores.clareza.excelente }} | 🟠 {{ indicadores.clareza.regular }} | 🔴 {{ indicadores.clareza.ruim }}</li>
+                    <li>Transparência: 🟢 {{ indicadores.transparencia.excelente }} | 🟠 {{ indicadores.transparencia.regular }} | 🔴 {{ indicadores.transparencia.ruim }}</li>
+                    <li>Organização: 🟢 {{ indicadores.organizacao.excelente }} | 🟠 {{ indicadores.organizacao.regular }} | 🔴 {{ indicadores.organizacao.ruim }}</li>
+                    <li>Finalização: 🟢 {{ indicadores.finalizacao.excelente }} | 🟠 {{ indicadores.finalizacao.regular }} | 🔴 {{ indicadores.finalizacao.ruim }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Arrays montados manualmente com Jinja (sem tojson)
+    const colabLabels = [
+        {% for l in colab_labels %}
+            "{{ l }}"{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    ];
+
+    const colabMedias = [
+        {% for v in colab_medias %}
+            {{ v }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    ];
+
+    const distLabels = [
+        {% for l in dist_labels %}
+            {{ l }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    ];
+
+    const distValues = [
+        {% for v in dist_values %}
+            {{ v }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    ];
+
+    // Gráfico de média por colaborador
+    const ctxColab = document.getElementById('colabChart').getContext('2d');
+    new Chart(ctxColab, {
+        type: 'bar',
+        data: {
+            labels: colabLabels,
+            datasets: [{
+                label: 'Média de indicação',
+                data: colabMedias,
+                borderRadius: 8,
+                backgroundColor: 'rgba(191,168,143,0.85)',
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 10 }
+            }
+        }
+    });
+
+    // Gráfico de distribuição de notas
+    const ctxDist = document.getElementById('distChart').getContext('2d');
+    new Chart(ctxDist, {
+        type: 'line',
+        data: {
+            labels: distLabels,
+            datasets: [{
+                label: 'Quantidade de avaliações',
+                data: distValues,
+                tension: 0.4,
+                fill: true,
+                backgroundColor: 'rgba(191,168,143,0.25)',
+                borderColor: 'rgba(191,168,143,1)',
+                pointRadius: 4,
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { display: true, text: 'Nota' } },
+                y: { beginAtZero: true, title: { display: true, text: 'Quantidade' } }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
