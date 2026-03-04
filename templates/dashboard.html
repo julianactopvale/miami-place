@@ -81,15 +81,19 @@
 
 <header class="top-header py-2">
     <div class="container d-flex justify-content-between align-items-center">
-        <div>
+        <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary btn-voltar"
                     onclick="window.location.href='/'">
                 ← Formulário
             </button>
-            <div class="mt-2">
-                <span class="metric-title">Dashboard de Atendimento</span>
-                <h4 class="mb-0">Miami Place</h4>
-            </div>
+            <button class="btn btn-outline-secondary btn-voltar"
+                    onclick="window.location.href='/logout'">
+                Sair
+            </button>
+        </div>
+        <div class="text-end">
+            <span class="metric-title d-block">Dashboard de Atendimento</span>
+            <h5 class="mb-0">Miami Place</h5>
         </div>
         <div>
             <img src="{{ url_for('static', filename='logo.png') }}" class="logo" alt="Miami Place">
@@ -105,14 +109,14 @@
             <div class="card-soft">
                 <div class="metric-title">Média de indicação</div>
                 <div class="metric-value">
-                    {% if media_indicacao is not none %}
+                    {% if media_indicacao != None %}
                         {{ media_indicacao|round(1) }}/10
                     {% else %}
                         –
                     {% endif %}
                 </div>
                 <small class="text-muted">
-                    Baseado em {{ total_reviews }} avaliação{{ 's' if total_reviews != 1 else '' }}.
+                    Baseado em {{ total_reviews }} avaliação{% if total_reviews != 1 %}s{% endif %}.
                 </small>
             </div>
         </div>
@@ -165,7 +169,7 @@
                                 <td><span class="badge-colab">{{ c.nome }}</span></td>
                                 <td>{{ c.quantidade }}</td>
                                 <td>
-                                    {% if c.media is not none %}
+                                    {% if c.media != None %}
                                         {{ c.media|round(1) }}/10
                                     {% else %}
                                         –
@@ -185,11 +189,31 @@
             <div class="card-soft">
                 <div class="metric-title mb-2">Qualidade por critério</div>
                 <ul class="small mb-0">
-                    <li>Educação: 🟢 {{ indicadores.educacao.excelente }} | 🟠 {{ indicadores.educacao.regular }} | 🔴 {{ indicadores.educacao.ruim }}</li>
-                    <li>Clareza: 🟢 {{ indicadores.clareza.excelente }} | 🟠 {{ indicadores.clareza.regular }} | 🔴 {{ indicadores.clareza.ruim }}</li>
-                    <li>Transparência: 🟢 {{ indicadores.transparencia.excelente }} | 🟠 {{ indicadores.transparencia.regular }} | 🔴 {{ indicadores.transparencia.ruim }}</li>
-                    <li>Organização: 🟢 {{ indicadores.organizacao.excelente }} | 🟠 {{ indicadores.organizacao.regular }} | 🔴 {{ indicadores.organizacao.ruim }}</li>
-                    <li>Finalização: 🟢 {{ indicadores.finalizacao.excelente }} | 🟠 {{ indicadores.finalizacao.regular }} | 🔴 {{ indicadores.finalizacao.ruim }}</li>
+                    <li>Educação:
+                        🟢 {{ indicadores.educacao.excelente }}
+                        | 🟠 {{ indicadores.educacao.regular }}
+                        | 🔴 {{ indicadores.educacao.ruim }}
+                    </li>
+                    <li>Clareza:
+                        🟢 {{ indicadores.clareza.excelente }}
+                        | 🟠 {{ indicadores.clareza.regular }}
+                        | 🔴 {{ indicadores.clareza.ruim }}
+                    </li>
+                    <li>Transparência:
+                        🟢 {{ indicadores.transparencia.excelente }}
+                        | 🟠 {{ indicadores.transparencia.regular }}
+                        | 🔴 {{ indicadores.transparencia.ruim }}
+                    </li>
+                    <li>Organização:
+                        🟢 {{ indicadores.organizacao.excelente }}
+                        | 🟠 {{ indicadores.organizacao.regular }}
+                        | 🔴 {{ indicadores.organizacao.ruim }}
+                    </li>
+                    <li>Finalização:
+                        🟢 {{ indicadores.finalizacao.excelente }}
+                        | 🟠 {{ indicadores.finalizacao.regular }}
+                        | 🔴 {{ indicadores.finalizacao.ruim }}
+                    </li>
                 </ul>
             </div>
         </div>
@@ -197,60 +221,77 @@
 
     <!-- Lista de avaliações -->
     <div class="card-soft">
-        <div class="metric-title mb-2">Avaliações detalhadas</div>
+        <form method="POST" action="{{ url_for('delete_selected') }}">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="metric-title mb-0">Avaliações detalhadas</div>
+                <button type="submit"
+                        class="btn btn-sm btn-outline-danger"
+                        id="btnExcluirSelecionadas"
+                        disabled>
+                    Excluir selecionadas
+                </button>
+            </div>
 
-        {% if reviews %}
-            {% for r in reviews %}
-                <div class="avaliacao-card mb-2" data-colab="{{ r.colaborador }}">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <strong>{{ r.colaborador }}</strong>
-                            {% if r.indicacao is not none %}
-                                <span class="small-muted">— ⭐ {{ r.indicacao }}/10</span>
-                            {% endif %}
+            {% if reviews %}
+                {% for r in reviews %}
+                    <div class="avaliacao-card mb-2 d-flex align-items-start"
+                         data-colab="{{ r.colaborador }}">
+
+                        <div class="form-check me-2 mt-1">
+                            <input class="form-check-input select-review"
+                                   type="checkbox"
+                                   name="indices"
+                                   value="{{ loop.index0 }}">
                         </div>
-                        <div class="small-muted">
-                            {{ r.data or "" }}
+
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ r.colaborador }}</strong>
+                                    {% if r.indicacao != None %}
+                                        <span class="small-muted">— ⭐ {{ r.indicacao }}/10</span>
+                                    {% endif %}
+                                    {% if r.nome_cliente or r.telefone_cliente %}
+                                        <p class="small-muted mb-1 mt-1">
+                                            Cliente:
+                                            {% if r.nome_cliente %}{{ r.nome_cliente }}{% endif %}
+                                            {% if r.telefone_cliente %} • {{ r.telefone_cliente }}{% endif %}
+                                        </p>
+                                    {% endif %}
+                                    <p class="small-muted mb-1">
+                                        Educação: {{ r.educacao }} |
+                                        Clareza: {{ r.clareza }} |
+                                        Transparência: {{ r.transparencia }} |
+                                        Organização: {{ r.organizacao }} |
+                                        Finalização: {{ r.finalizacao }}
+                                    </p>
+                                    {% if r.melhoria %}
+                                        <p class="mb-0"><strong>Comentário:</strong> {{ r.melhoria }}</p>
+                                    {% endif %}
+                                </div>
+
+                                <div class="small-muted ms-2">
+                                    {{ r.data or "" }}
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    {% if r.nome_cliente or r.telefone_cliente %}
-                        <p class="small-muted mb-1 mt-1">
-                            Cliente:
-                            {% if r.nome_cliente %}{{ r.nome_cliente }}{% endif %}
-                            {% if r.telefone_cliente %} • {{ r.telefone_cliente }}{% endif %}
-                        </p>
-                    {% endif %}
-
-                    <p class="small-muted mb-1">
-                        Educação: {{ r.educacao }} |
-                        Clareza: {{ r.clareza }} |
-                        Transparência: {{ r.transparencia }} |
-                        Organização: {{ r.organizacao }} |
-                        Finalização: {{ r.finalizacao }}
-                    </p>
-
-                    {% if r.melhoria %}
-                        <p class="mb-0"><strong>Comentário:</strong> {{ r.melhoria }}</p>
-                    {% endif %}
-                </div>
-            {% endfor %}
-        {% else %}
-            <p class="text-muted mb-0">Ainda não há avaliações cadastradas.</p>
-        {% endif %}
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">Ainda não há avaliações cadastradas.</p>
+            {% endif %}
+        </form>
     </div>
 
 </div>
 
 <script>
-    // Filtro por colaborador (front-end)
+    // Filtro por colaborador
     const selectFiltro = document.getElementById('filtroColab');
-
     if (selectFiltro) {
         selectFiltro.addEventListener('change', function () {
             const valor = this.value;
             const cards = document.querySelectorAll('[data-colab]');
-
             cards.forEach(card => {
                 const colab = card.getAttribute('data-colab');
                 if (valor === 'todos' || valor === colab) {
@@ -261,6 +302,22 @@
             });
         });
     }
+
+    // Habilita/desabilita o botão "Excluir selecionadas"
+    const checkboxes = document.querySelectorAll('.select-review');
+    const btnExcluir = document.getElementById('btnExcluirSelecionadas');
+
+    function atualizarBotaoExcluir() {
+        if (!btnExcluir) return;
+        const algumMarcado = Array.from(checkboxes).some(cb => cb.checked);
+        btnExcluir.disabled = !algumMarcado;
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', atualizarBotaoExcluir);
+    });
+
+    atualizarBotaoExcluir();
 </script>
 
 </body>

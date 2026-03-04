@@ -5,12 +5,12 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# 🔑 chave da sessão (não é a senha do dono)
+# chave da sessão (não é a senha do dono)
 app.secret_key = "2112miami"
 
 ARQUIVO_DADOS = "avaliacoes.json"
 
-# --------- CARREGAR DADOS ---------
+# -------- CARREGAR DADOS --------
 if os.path.exists(ARQUIVO_DADOS):
     try:
         with open(ARQUIVO_DADOS, "r", encoding="utf-8") as f:
@@ -22,34 +22,28 @@ else:
 
 
 def salvar_dados():
-    """Salva as avaliações no arquivo JSON."""
     with open(ARQUIVO_DADOS, "w", encoding="utf-8") as f:
         json.dump(reviews, f, indent=4, ensure_ascii=False)
 
 
 def calcular_estatisticas():
-    """Calcula métricas usadas no index e no dashboard."""
     total_reviews = len(reviews)
 
     # média geral
     media_indicacao = None
     if total_reviews > 0:
-        media_indicacao = sum(r.get("indicacao", 0) for r in reviews) / total_reviews
+        soma = 0
+        for r in reviews:
+            soma += r.get("indicacao", 0)
+        media_indicacao = soma / total_reviews
 
     # estatísticas por colaborador
     por_colab = {}
     for r in reviews:
         nome = r.get("colaborador") or "Não informado"
-
         if nome not in por_colab:
-            por_colab[nome] = {
-                "quantidade": 0,
-                "soma": 0,
-                "qtd_notas": 0
-            }
-
+            por_colab[nome] = {"quantidade": 0, "soma": 0, "qtd_notas": 0}
         por_colab[nome]["quantidade"] += 1
-
         nota = r.get("indicacao")
         if isinstance(nota, int):
             por_colab[nome]["soma"] += nota
@@ -60,14 +54,11 @@ def calcular_estatisticas():
         media = None
         if dados["qtd_notas"] > 0:
             media = dados["soma"] / dados["qtd_notas"]
+        estatisticas_colab.append(
+            {"nome": nome, "quantidade": dados["quantidade"], "media": media}
+        )
 
-        estatisticas_colab.append({
-            "nome": nome,
-            "quantidade": dados["quantidade"],
-            "media": media
-        })
-
-    # indicadores por critério (excelente / regular / ruim)
+    # contagem por critério
     def contar(campo):
         base = {"excelente": 0, "regular": 0, "ruim": 0}
         for r in reviews:
@@ -87,13 +78,13 @@ def calcular_estatisticas():
     return total_reviews, media_indicacao, estatisticas_colab, indicadores
 
 
-# --------- PÁGINA DE AVALIAÇÃO (CLIENTE) ---------
-@app.route('/', methods=['GET', 'POST'])
+# -------- PÁGINA DO CLIENTE --------
+@app.route("/", methods=["GET", "POST"])
 def index():
     global reviews
 
-    if request.method == 'POST':
-        indicacao_str = request.form.get('indicacao') or "0"
+    if request.method == "POST":
+        indicacao_str = request.form.get("indicacao") or "0"
         try:
             indicacao = int(indicacao_str)
         except ValueError:
@@ -118,10 +109,11 @@ def index():
 
         reviews.append(review)
         salvar_dados()
-
         return redirect(url_for("index"))
 
-    total_reviews, media_indicacao, estatisticas_colab, indicadores = calcular_estatisticas()
+    total_reviews, media_indicacao, estatisticas_colab, indicadores = (
+        calcular_estatisticas()
+    )
 
     return render_template(
         "index.html",
@@ -133,16 +125,14 @@ def index():
     )
 
 
-# --------- DASHBOARD COM SENHA ---------
-@app.route('/dashboard', methods=['GET', 'POST'])
+# -------- DASHBOARD COM LOGIN --------
+@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
-    # 🔒 LOGIN
+    # login
     if not session.get("autenticado"):
         if request.method == "POST":
             senha = request.form.get("senha")
-
-            # 👇 AQUI É A SENHA DO DONO
-            # (troque "2112miami" se quiser outra)
+            # SENHA DO DONO
             if senha == "2112miami":
                 session["autenticado"] = True
                 return redirect(url_for("dashboard"))
@@ -151,8 +141,10 @@ def dashboard():
 
         return render_template("login.html")
 
-    # 🔓 DASHBOARD (já autenticado)
-    total_reviews, media_indicacao, estatisticas_colab, indicadores = calcular_estatisticas()
+    # já autenticado → mostra painel
+    total_reviews, media_indicacao, estatisticas_colab, indicadores = (
+        calcular_estatisticas()
+    )
 
     return render_template(
         "dashboard.html",
@@ -162,6 +154,39 @@ def dashboard():
         indicadores=indicadores,
         reviews=reviews,
     )
+
+
+# -------- LOGOUT --------
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("dashboard"))
+
+
+# -------- EXCLUIR MÚLTIPLAS --------
+@app.route("/delete_selected", methods=["POST"])
+def delete_selected():
+    if not session.get("autenticado"):
+        return redirect(url_for("dashboard"))
+
+    indices = request.form.getlist("indices")
+    if not indices:
+        return redirect(url_for("dashboard"))
+
+    indices_int = []
+    for idx in indices:
+        try:
+            indices_int.append(int(idx))
+        except ValueError:
+            pass
+
+    # remove de trás pra frente
+    for idx in sorted(set(indices_int), reverse=True):
+        if 0 <= idx < len(reviews):
+            reviews.pop(idx)
+
+    salvar_dados()
+    return redirect(url_for("dashboard"))
 
 
 if __name__ == "__main__":
